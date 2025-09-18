@@ -386,7 +386,7 @@ def click(btn):
     update_display()
     return
 
-  if btn in ["+", "−", "×", "÷"]:
+  if btn in ["+", "-", "×", "÷"]:
     if not current and not expression:
       return
     if current:

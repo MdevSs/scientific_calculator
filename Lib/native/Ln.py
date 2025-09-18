@@ -3,7 +3,8 @@ def fnLn(s: str) -> float:
     """ln(x). SHIFT -> e^x. ALPHA -> constante e."""
     formula = s
     if "ln" in formula:
-        value = float(formula.removeprefix("ln "))
+        formula = formula.strip()
+        value = float(formula.removeprefix("ln"))
     else:
         raise ValueError("log não está definido")
     if value <= 0:
