@@ -55,10 +55,8 @@ def split_expression(expr: str):
         r'|Rec\([^)]+\)'               # Rec(x, y)
         r'|\d+C\d+'                    # nCr (ex: 8C3)
         r'|\d+P\d+'                    # nPr (ex: 20P3)
-        r'|(?:log|ln|sin|cos|tan)\s*-?\d+(?:,\d+)?'  # funções com número
-        r'|\d+\^?\d*'                  # números com expoente (ex: 10^2)
-        r'|\d+,\d+'                    # números decimais com vírgula
-        r'|\d+'                        # números inteiros
+        r'|(?:log|ln|sin|cos|tan)\s*-?\d+(?:[.,]\d+)?'  # funções com número
+        r'|-?\d+(?:[.,]\d+)?(?:\^?\d+)?'  # números decimais ou inteiros com expoente
         r'|[+\-×X÷*/()]',              # operadores
         expr.replace(" ", "")
     )
@@ -125,19 +123,30 @@ def eval_expression():
     tokens = split_expression(expression)
     new_tokens = []
     for i in tokens:
+      #  nCr
       if "C" in i:
         result = nCr(i)
         new_tokens.append(str(result))
+      # nPr
       elif "P" in i:
         result = nPr(i)
         new_tokens.append(str(result))
+      # ln
       elif "ln" in i:
         result = fnLn(i)
         new_tokens.append(str(result))
+      #  log 10
       elif "log" in i:
         result = fnLog10(i)
         new_tokens.append(str(result))
+      elif "^" in i:
+        n, k = i.split("^")
+        result = float(n)**float(k)
+        print(result)
+        new_tokens.append(str(result))
+
       else:
+      # operação normal
         new_tokens.append(i.replace("×", "*").replace("÷", "/").replace("−", "-"))
     
     # Junta os tokens em uma string para o eval
@@ -190,7 +199,7 @@ def click(btn):
         shift = False  # reseta o estado de shift após usar
       else:
         # ENG → notação de engenharia
-        current = to_engineering(val)
+        current = ENG(val)
     except Exception:
         current = "Erro"
 
