@@ -16,26 +16,3 @@ def ativar_alpha():
     global shift, alpha
     alpha = True
     shift = False
-
-
-# nCr
-
-
-
-# Pol
-
-
-
-# ENG
-
-
-
-# Ab/c
-
-
-
-# ln
-
-
-
-# log

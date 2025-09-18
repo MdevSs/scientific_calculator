@@ -7,7 +7,15 @@
 # Resolver operação ao clicar igual ou outra operação;
 # Só pode usar uma segunda virgula após o uso de um operador ou sinal de igual;
 # Formatar com ponto números acima de mil.
-
+from Lib.native.nCr import * 
+from Lib.native.nPr import * 
+from Lib.native.ENG import * 
+from Lib.native.Ln import * 
+from Lib.native.Log import * 
+from Lib.native.Pol import * 
+from Lib.native.Rec import * 
+from Lib.native.twoPoints import *
+import re
 import math
 from math import *
 import tkinter as tk
@@ -40,6 +48,25 @@ def format_number(n: str):
   except:
     return n
 
+def split_expression(expr: str):
+    # Regex: números (com ^, decimais, negativos) ou operadores
+    tokens = re.findall(
+        r'Pol\([^)]+\)'                # Pol(x, y)
+        r'|Rec\([^)]+\)'               # Rec(x, y)
+        r'|\d+C\d+'                    # nCr (ex: 8C3)
+        r'|\d+P\d+'                    # nPr (ex: 20P3)
+        r'|(?:log|ln|sin|cos|tan)\s*-?\d+(?:,\d+)?'  # funções com número
+        r'|\d+\^?\d*'                  # números com expoente (ex: 10^2)
+        r'|\d+,\d+'                    # números decimais com vírgula
+        r'|\d+'                        # números inteiros
+        r'|[+\-×X÷*/()]',              # operadores
+        expr.replace(" ", "")
+    )
+    tokens = [t.strip() for t in tokens if t.strip()]
+    print(tokens)
+    return tokens
+
+
 def update_display():
   if current:
     display_var.set(current)
@@ -48,12 +75,75 @@ def update_display():
   else:
     display_var.set("0")
 
+# def eval_expression():
+#   global expression, current
+#   print(current)
+#   try:
+#     if current:
+#       expression += current.replace(",", ".")
+    
+#     expression = split_expression(expression);
+
+
+#     for i in expression:
+#       print(i)
+#       if "C" in i:
+#         result = nCr(current);
+#         current = format_number(str(result))
+#       elif "P" in i:
+#         result = nPr(i);
+#         i = format_number(str(result))
+#       elif "ln" in i:
+#         result = fnLn(i);
+#         i = format_number(str(result))
+#       elif "log" in i:
+#         result = fnLog10(i);
+#         i = format_number(str(result))
+
+#     # print(expression)
+
+#     result = eval(expression)
+#     expression = ""
+#     current = format_number(str(result))
+#     return True
+#   except ZeroDivisionError:
+#     expression = ""
+#     current = "Div/0"
+#     return False
+#   except:
+#     expression = ""
+#     current = "Erro"
+#     return False
+
 def eval_expression():
   global expression, current
+  print(current)
   try:
     if current:
-      expression += current.replace(",", ".")
-    result = eval(expression)
+      expression = current.replace(",", ".")
+    
+    tokens = split_expression(expression)
+    new_tokens = []
+    for i in tokens:
+      if "C" in i:
+        result = nCr(i)
+        new_tokens.append(str(result))
+      elif "P" in i:
+        result = nPr(i)
+        new_tokens.append(str(result))
+      elif "ln" in i:
+        result = fnLn(i)
+        new_tokens.append(str(result))
+      elif "log" in i:
+        result = fnLog10(i)
+        new_tokens.append(str(result))
+      else:
+        new_tokens.append(i.replace("×", "*").replace("÷", "/").replace("−", "-"))
+    
+    # Junta os tokens em uma string para o eval
+    expr_str = "".join(new_tokens)
+    print(expr_str)
+    result = eval(expr_str)
     expression = ""
     current = format_number(str(result))
     return True
@@ -61,7 +151,8 @@ def eval_expression():
     expression = ""
     current = "Div/0"
     return False
-  except:
+  except Exception as e:
+    print(e)
     expression = ""
     current = "Erro"
     return False
@@ -109,21 +200,8 @@ def click(btn):
   if btn == "nCr":
     try:
       # O usuário precisa passar os valores separando por virgula
-      if "," not in current:
-        current = "Erro"
-      else:
-        n_str, k_str = current.split(",")
-        n, k = int(n_str), int(k_str)
-
-        if shift:
-          # SHIFT + nCr -> permutação (nPr)
-          result = factorial(n) // factorial(n - k)
-          shift = False  # reseta shift
-        else:
-          # nCr normal -> combinação
-          result = factorial(n) // (factorial(k) * factorial(n - k))
-
-        current = format_number(str(result))
+      current+="C";
+      print(current)
 
     except Exception:
         current = "Erro"
@@ -138,21 +216,14 @@ def click(btn):
         if "," not in current:
           current = "Erro"
         else:
-          r_str, ang_str = current.split(",")
-          r, ang = float(r_str), float(ang_str)
-          # x = r * cos(θ)   (em graus)
-          result = r * math.cos(math.radians(ang))
-          current = format_number(str(result))
+          current+="Rec("
           shift = False
       else:
         # Pol(x,y) → retorna distância (raiz quadrada da soma dos quadrados)
         if "," not in current:
           current = "Erro"
         else:
-          x_str, y_str = current.split(",")
-          x, y = float(x_str), float(y_str)
-          result = math.sqrt(x**2 + y**2)
-          current = format_number(str(result))
+          current+="Pol("
 
     except Exception:
       current = "Erro"
@@ -205,11 +276,7 @@ def click(btn):
 
       else:
         # ln(x)
-        val = float(current.replace(",", ".")) if current else 0.0
-        if val <= 0:
-          current = "Erro"
-        else:
-          current = format_number(str(math.log(val)))  # log base e
+        current+="ln ";
 
     except Exception:
       current = "Erro"
@@ -233,12 +300,7 @@ def click(btn):
         alpha = False
 
       else:
-        # log(x) = log base 10
-        val = float(current.replace(",", ".")) if current else 0.0
-        if val <= 0:
-          current = "Erro"
-        else:
-          current = format_number(str(math.log10(val)))
+        current+="log ";
 
     except Exception:
       current = "Erro"
@@ -316,9 +378,11 @@ def click(btn):
   #   update_display()
   #   return
 
+
   if btn == "=":
-    eval_expression()
     decimal_allowed = "," not in current
+      # nCr normal -> combinação
+    eval_expression()
     update_display()
     return
 
@@ -326,21 +390,22 @@ def click(btn):
     if not current and not expression:
       return
     if current:
+      current += " "+btn+" "
       expression += current.replace(",", ".")
     else:
       expression = expression.rstrip("+-*/") # rstrip remove os espaços em branco
     # resolve antes de adicionar novo operador
-    try:
-      result = str(eval(expression))
-      expression = result + {"+": "+", "−": "-", "×": "*", "÷": "/"}[btn]
-      current = ""
-      decimal_allowed = True
-    except ZeroDivisionError:
-      current = "Div/0"
-      expression = ""
-    except:
-      current = "Erro"
-      expression = ""
+    # try:
+    #   result = str(eval(expression))
+    #   expression = result + {"+": "+", "−": "-", "×": "*", "÷": "/"}[btn]
+    #   current = ""
+    #   decimal_allowed = True
+    # except ZeroDivisionError:
+    #   current = "Div/0"
+    #   expression = ""
+    # except:
+    #   current = "Erro"
+    #   expression = ""
     update_display()
     return
 
