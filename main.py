@@ -15,6 +15,8 @@ from Lib.native.Log import *
 from Lib.native.Pol import * 
 from Lib.native.Rec import * 
 from Lib.native.twoPoints import *
+from Lib.native.Abc import *
+from Lib.native.Dc import *
 import re
 import math
 from math import *
@@ -51,13 +53,13 @@ def format_number(n: str):
 def split_expression(expr: str):
     # Regex: números (com ^, decimais, negativos) ou operadores
     tokens = re.findall(
-        r'Pol\([^)]+\)'                # Pol(x, y)
-        r'|Rec\([^)]+\)'               # Rec(x, y)
-        r'|\d+C\d+'                    # nCr (ex: 8C3)
-        r'|\d+P\d+'                    # nPr (ex: 20P3)
+        r'Pol\([^\)]*\)?'                # Pol(x, y) com qualquer coisa dentro dos parênteses
+        r'|Rec\([^\)]*\)?'               # Rec(x, y)
+        r'|\d+C\d+'                     # nCr (ex: 8C3)
+        r'|\d+P\d+'                     # nPr (ex: 20P3)
         r'|(?:log|ln|sin|cos|tan)\s*-?\d+(?:[.,]\d+)?'  # funções com número
         r'|-?\d+(?:[.,]\d+)?(?:\^?\d+)?'  # números decimais ou inteiros com expoente
-        r'|[+\-×X÷*/()]',              # operadores
+        r'|[+\-×X÷*/()]',               # operadores
         expr.replace(" ", "")
     )
     tokens = [t.strip() for t in tokens if t.strip()]
@@ -118,17 +120,17 @@ def eval_expression():
   print(current)
   try:
     if current:
-      expression = current.replace(",", ".")
+      expression = current
     
     tokens = split_expression(expression)
     new_tokens = []
     for i in tokens:
       #  nCr
-      if "C" in i:
+      if re.fullmatch(r'\d+C\d+', i):
         result = nCr(i)
         new_tokens.append(str(result))
-      # nPr
-      elif "P" in i:
+    # nPr
+      elif re.fullmatch(r'\d+P\d+', i):
         result = nPr(i)
         new_tokens.append(str(result))
       # ln
@@ -144,24 +146,35 @@ def eval_expression():
         result = float(n)**float(k)
         print(result)
         new_tokens.append(str(result))
-
+      elif "Pol(" in i:
+        result = Pol(i)
+        new_tokens.append(str(result))
+      elif "Rec(" in i:
+        result = Rec(i)
+        new_tokens.append(str(result))
       else:
       # operação normal
         new_tokens.append(i.replace("×", "*").replace("÷", "/").replace("−", "-"))
     
     # Junta os tokens em uma string para o eval
     expr_str = "".join(new_tokens)
-    print(expr_str)
+    expr_str = expr_str.replace(",", ".")
+    print(expr_str.replace(",", "."))
     result = eval(expr_str)
+    print(result)
     expression = ""
-    current = format_number(str(result))
+    if re.fullmatch(r'.*([\+-xX*÷]\s*\d*\/\d*).|.(\d*\/\d*\s*[+\-xX*÷]).*', current.replace(" ", "")) and result != 1 :
+    # if re.fullmatch(r'[-?\d+/\d+]?\s*[+\-xX*÷]\s*[-?\d+/\d+]?', current.replace(" ", "")):
+      current = Abc(float(result))
+    else:
+      current = format_number(str(result))
     return True
   except ZeroDivisionError:
     expression = ""
     current = "Div/0"
     return False
   except Exception as e:
-    print(e)
+    print("Exception: ", e)
     expression = ""
     current = "Erro"
     return False
@@ -222,47 +235,53 @@ def click(btn):
     try:
       if shift:
         # SHIFT -> Pol -> Rec(r,θ) -> retorna x
-        if "," not in current:
-          current = "Erro"
-        else:
-          current+="Rec("
-          shift = False
+        current+="Rec("
+        shift = False
       else:
-        # Pol(x,y) → retorna distância (raiz quadrada da soma dos quadrados)
-        if "," not in current:
-          current = "Erro"
-        else:
-          current+="Pol("
+        current+="Pol("
+      # Pol(x,y) → retorna distância (raiz quadrada da soma dos quadrados)
+      # if "," not in current:
+      #   current = "Erro"
 
     except Exception:
       current = "Erro"
 
     update_display()
     return
+  
 
   if btn == "Ab/c":
     try:
       # Converte o current em float
-      val = float(current.replace(",", ".")) if current else 0.0
-      from fractions import Fraction
-      frac = Fraction(val).limit_denominator()
-
       if shift:
-        # Shift + Ab/c → número misto
-        numer, denom = frac.numerator, frac.denominator
-        inteiro, resto = divmod(numer, denom)
-        if inteiro == 0:
-          current = f"{resto}/{denom}"
-        elif resto == 0:
-          current = str(inteiro)
-        else:
-          current = f"{inteiro} {resto}/{denom}"
+        # Shift + D/c → número misto
+        if re.fullmatch(r'-?\d+([.,]\d*)?', current):
+          current = Dc(float(current.replace(",", ".")))
+
         shift = False  # reseta shift após uso
       else:
         # Ab/c normal → fração imprópria
-        current = f"{frac.numerator}/{frac.denominator}"
+        # if re.fullmatch(r'-?\d+/\d+', current):
+        #   current = eval(current)
+        # elif re.fullmatch(r'-?\d+(?:[.,]\d+)?', current):
+        #   print("Não sei")
+        #   current = Abc(current)
+        # else: 
+        #   current += "/"
+          if re.fullmatch(r'-?\d+/\d+', current):
+            print("fraction")
+            current = str(eval(current))
+          # Se é decimal, transforma em fração
+          elif re.fullmatch(r'-?\d+[.,]\d+', current):
+            print("decimal")
+            current = Abc(float(current.replace(",", ".")))
+          # Se não tem barra, adiciona uma
+          else:
+            print("nothing")
+            current += "/"
 
-    except Exception:
+    except Exception as e:
+      print("Abc erro: ", e)
       current = "Erro"
 
     update_display()
@@ -320,6 +339,13 @@ def click(btn):
   # Standard calculator
 
   if btn == "CE":
+    current = ""
+    expression = ""
+    decimal_allowed = True
+    update_display()
+    return
+  
+  if btn == "AC":
     current = ""
     expression = ""
     decimal_allowed = True
@@ -386,9 +412,12 @@ def click(btn):
   #     memory -= val
   #   update_display()
   #   return
+  if btn == ")":
+    current+=")"
+    update_display()
+    return
 
-
-  if btn == "=":
+  if btn ==  "=":
     decimal_allowed = "," not in current
       # nCr normal -> combinação
     eval_expression()

@@ -1,10 +1,5 @@
 from fractions import Fraction
-def Abc(x: float, use_shift=False) -> str:
-    """
-    Converte número em fração.
-      Ab/c normal -> fração imprópria
-      SHIFT + Ab/c -> número misto
-    """
+def Dc(x: float) -> str:
     frac = Fraction(x).limit_denominator()
     
     inteiro, resto = divmod(frac.numerator, frac.denominator)
@@ -14,4 +9,5 @@ def Abc(x: float, use_shift=False) -> str:
         return str(inteiro)
     else:
         return f"{inteiro} {resto}/{frac.denominator}"
-        
+
+print(Dc(20.5))
