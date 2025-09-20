@@ -59,7 +59,7 @@ def split_expression(expr: str):
       r'|\d+P\d+'                      # nPr (ex: 20P3)
       r'|(?:log|ln|sin|cos|tan)\s*-?\d+(?:[.,]\d+)?'  # funções com número
       r'|Ans'                          # Ans (resposta anterior)
-      r'|-?\d+(?:[.,]\d+)?(?:\^?\d+)?' # números decimais ou inteiros com expoente
+      r'|-?\d+(?:[.,]\d+)?(?:\^?-?\d+)?' # números decimais ou inteiros com expoente
       r'|[+\-×X÷*/():]',               # operadores, parênteses e dois pontos
       expr.replace(" ", "")
   )
@@ -145,7 +145,7 @@ def eval_expression():
         new_tokens.append(str(result))
       elif "^" in i:
         n, k = i.split("^")
-        result = float(n)**float(k)
+        result = float(n)**int(k)
         print(result)
         new_tokens.append(str(result))
       elif "Pol(" in i:
@@ -178,6 +178,7 @@ def eval_expression():
     else:
       expr_str = "".join(new_tokens)
       expr_str = expr_str.replace(",", ".")
+      print(expr_str)
       result = eval(expr_str)
       print(result)
       expression = ""
@@ -226,17 +227,67 @@ def click(btn):
 
   if btn == "ENG":
     try:
-      val = float(current.replace(",", ".")) if current else 0.0
 
       if shift:
         # SHIFT + ENG → volta para decimal formatado
-        current = format_number(str(val))
+        if "10^" in current:
+          tokens = re.findall(
+            r'-?\d+(?:[.,]\d+)?'   # números decimais ou inteiros
+            r'|[xX×]'              # x (vezes)
+            r'|\^'                 # expoente
+            r'|[+\-÷*/()]'         # outros operadores e parênteses
+            r'|[A-Za-z]+',         # variáveis (como 'Ans')
+            current.replace(" ", "")
+          )
+          print(tokens)
+          power = tokens[tokens.index("10"):]
+          power[2]=str(float(power[2])+3)
+          # el = float(power[0])**int(power[2].replace(".0", ""))
+          power[2] = power[2].replace(".0", "")
+          print(power)
+
+          tokens[0]=str(float(tokens[0])/1000)
+          expression = "".join(tokens[:2])+"".join(power)
+          # expression = "".join(tokens[:2])+str(el)
+          print("expression: ", expression)
+          current = expression
+          print("current: ", current)
+
+        else:
+          current="Erro: there's not cientific notation"
         shift = False  # reseta o estado de shift após usar
       else:
         # ENG → notação de engenharia
-        current = ENG(val)
-    except Exception:
+        print(current)
+        if "10^" in current:
+          tokens = re.findall(
+            r'-?\d+(?:[.,]\d+)?'   # números decimais ou inteiros
+            r'|[xX×]'              # x (vezes)
+            r'|\^'                 # expoente
+            r'|[+\-÷*/()]'         # outros operadores e parênteses
+            r'|[A-Za-z]+',         # variáveis (como 'Ans')
+            current.replace(" ", "")
+          )
+          print(tokens)
+          power = tokens[tokens.index("10"):]
+          power[2]=str(float(power[2])-3)
+          # el = float(power[0])**int(power[2].replace(".0", ""))
+          power[2] = power[2].replace(".0", "")
+          print(power)
+
+          tokens[0]=str(float(tokens[0])*1000)
+          expression = "".join(tokens[:2])+"".join(power)
+          # expression = "".join(tokens[:2])+str(el)
+          print("expression: ", expression)
+          current = expression
+          print("current: ", current)
+
+        else:
+          val = float(current.replace(",", ".")) if current else 0.0
+          current = ENG(val)
+    except Exception as e:
         current = "Erro"
+        print(e)
 
     update_display()
     return
