@@ -32,7 +32,7 @@ equal_color = "#AAAAAA"
 # State
 current = ""
 expression = ""
-memory = 0
+memory = None
 decimal_allowed = True
 cientific = False
 shift = False
@@ -52,19 +52,20 @@ def format_number(n: str):
 
 def split_expression(expr: str):
     # Regex: números (com ^, decimais, negativos) ou operadores
-    tokens = re.findall(
-        r'Pol\([^\)]*\)?'                # Pol(x, y) com qualquer coisa dentro dos parênteses
-        r'|Rec\([^\)]*\)?'               # Rec(x, y)
-        r'|\d+C\d+'                     # nCr (ex: 8C3)
-        r'|\d+P\d+'                     # nPr (ex: 20P3)
-        r'|(?:log|ln|sin|cos|tan)\s*-?\d+(?:[.,]\d+)?'  # funções com número
-        r'|-?\d+(?:[.,]\d+)?(?:\^?\d+)?'  # números decimais ou inteiros com expoente
-        r'|[+\-×X÷*/()]',               # operadores
-        expr.replace(" ", "")
-    )
-    tokens = [t.strip() for t in tokens if t.strip()]
-    print(tokens)
-    return tokens
+  tokens = re.findall(
+      r'Pol\([^\)]*\)?'                # Pol(x, y)
+      r'|Rec\([^\)]*\)?'               # Rec(x, y)
+      r'|\d+C\d+'                      # nCr (ex: 8C3)
+      r'|\d+P\d+'                      # nPr (ex: 20P3)
+      r'|(?:log|ln|sin|cos|tan)\s*-?\d+(?:[.,]\d+)?'  # funções com número
+      r'|Ans'                          # Ans (resposta anterior)
+      r'|-?\d+(?:[.,]\d+)?(?:\^?\d+)?' # números decimais ou inteiros com expoente
+      r'|[+\-×X÷*/():]',               # operadores, parênteses e dois pontos
+      expr.replace(" ", "")
+  )
+  tokens = [t.strip() for t in tokens if t.strip()]
+  print(tokens)
+  return tokens
 
 
 def update_display():
@@ -116,7 +117,7 @@ def update_display():
 #     return False
 
 def eval_expression():
-  global expression, current
+  global expression, current, memory
   print(current)
   try:
     if current:
@@ -124,6 +125,7 @@ def eval_expression():
     
     tokens = split_expression(expression)
     new_tokens = []
+    
     for i in tokens:
       #  nCr
       if re.fullmatch(r'\d+C\d+', i):
@@ -157,17 +159,37 @@ def eval_expression():
         new_tokens.append(i.replace("×", "*").replace("÷", "/").replace("−", "-"))
     
     # Junta os tokens em uma string para o eval
-    expr_str = "".join(new_tokens)
-    expr_str = expr_str.replace(",", ".")
-    print(expr_str.replace(",", "."))
-    result = eval(expr_str)
-    print(result)
-    expression = ""
+    if ':' in new_tokens:
+      if "Ans" in new_tokens:
+        new_tokens.remove("Ans")
+        one = ''.join(new_tokens[:new_tokens.index(":")]).replace("×", "*").replace("÷", "/").replace("−", "-").replace(",", ".")
+        second = ''.join(new_tokens[new_tokens.index(":")+1:]).replace("×", "*").replace("÷", "/").replace("−", "-").replace(",", ".")
+        res = str(eval(one)) # Resolve expressão antes do : (primeira)
+        res2 = (str(res)+second) # junta o resultado da primeira expressão com a segunda expressão
+        res2 = res2.strip() # retira espaços vazios ' '
+        res3 = str(eval(res2)) # resolve as ex´pressões juntas
+        result = res # cria um array com ambos os resultados
+        memory = res3
+        print(one, second)
+        print(result, res3)
+        expression = ""
+      else:
+        current = "Syntax Error: Ans não informado"
+    else:
+      expr_str = "".join(new_tokens)
+      expr_str = expr_str.replace(",", ".")
+      result = eval(expr_str)
+      print(result)
+      expression = ""
     if re.fullmatch(r'.*([\+-xX*÷]\s*\d*\/\d*).|.(\d*\/\d*\s*[+\-xX*÷]).*', current.replace(" ", "")) and result != 1 :
     # if re.fullmatch(r'[-?\d+/\d+]?\s*[+\-xX*÷]\s*[-?\d+/\d+]?', current.replace(" ", "")):
       current = Abc(float(result))
+      if memory != None:
+        memory = Abc(float(memory))
     else:
       current = format_number(str(result))
+      if memory != None:
+        memory = format_number(str(memory))
     return True
   except ZeroDivisionError:
     expression = ""
@@ -237,6 +259,9 @@ def click(btn):
         # SHIFT -> Pol -> Rec(r,θ) -> retorna x
         current+="Rec("
         shift = False
+      elif alpha:
+        current+=" : ";
+        alpha = False
       else:
         current+="Pol("
       # Pol(x,y) → retorna distância (raiz quadrada da soma dos quadrados)
@@ -417,10 +442,19 @@ def click(btn):
     update_display()
     return
 
+  if btn == "Ans":
+    current += "Ans"
+    update_display()
+    return
+
   if btn ==  "=":
     decimal_allowed = "," not in current
       # nCr normal -> combinação
-    eval_expression()
+    if(memory != None):
+      current = memory
+      memory = None;
+    else:
+      eval_expression()
     update_display()
     return
 
